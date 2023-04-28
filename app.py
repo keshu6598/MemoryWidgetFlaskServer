@@ -2,6 +2,9 @@ import os
 import base64
 import requests
 import base64
+import io
+from io import BytesIO
+from PIL import Image
 from requests_toolbelt.multipart import decoder
 
 from datetime import datetime
@@ -21,16 +24,44 @@ def favicon():
 
 @app.route('/getBase64FromBmp', methods=['POST'])
 def getBase64FromBmp():
+    print('request came here 1')
     request_body = request.get_json()
     path = request_body['path']
     encoded_string = ""
+    size = 300, 300
     try:
+        print('request came here 2')
         with open(path, "rb") as image_file:
             encoded_string = base64.b64encode(image_file.read())
-    except:
+        print('request came here 3')
+        data2 = encoded_string.decode()
+        imagedata = base64.b64decode(data2)
+        print('request came here 4')
+        buf = io.BytesIO(imagedata)
+        img = Image.open(buf)
+        print('request came here 5')
+        print('original size = ',img.size)
+        img.thumbnail(size, Image.ANTIALIAS)
+        print('new size = ',img.size)
+        buffered = BytesIO()
+        img.save(buffered, format="JPEG")
+        encoded_string = base64.b64encode(buffered.getvalue())
+    except Exception as e:
+        print(e)
         pass
-    bmp_base64String = 'data:image/bmp;base64,' + encoded_string.decode('utf-8')
+    bmp_base64String = 'data:image/png;base64,' + encoded_string.decode('utf-8')
     return jsonify({'base64': bmp_base64String})
+
+@app.route('/getPaths')
+def getPaths():
+    data = ""
+    try:
+        with open('C:\offlineScreenshots.txt', 'r') as file:
+            data = file.read().replace('\\', '/')
+    except:
+        pass    
+    print('data read from file: ' + data)
+    return jsonify({'paths': data})
 
 @app.route('/hello', methods=['POST'])
 def hello():
@@ -44,4 +75,4 @@ def hello():
        return redirect(url_for('index'))
 
 if __name__ == '__main__':
-   app.run(host="0.0.0.0")
+   app.run()
